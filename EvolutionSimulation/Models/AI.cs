@@ -68,7 +68,124 @@ namespace app
             //TODO: 
             //Destroy(gameObject);
         }
+        private Rigidbody2D rb;
 
+        // Start is called before the first frame update
+        void Start()
+        {
+            rb = gameObject.GetComponent<Rigidbody2D>();
+        }
+
+        // Update is called once per frame
+        void Update()
+        {
+            transform.eulerAngles = new Vector3(0f, 0f, Mathf.Atan2(rb.velocity.y, rb.velocity.x) * Mathf.Rad2Deg - 90);
+            age += Time.deltaTime;
+        }
+
+        void FixedUpdate()
+        {
+            float vision = 5f + attackSkill;
+            float[] inputs = new float[inputsCount];
+            Collider2D[] colliders = Physics2D.OverlapCircleAll(transform.position, vision);
+
+            // количество соседних объектов
+            float[] neighboursCount = new float[4];
+
+            // вектара к центрам масс еды, красного, зеленого и синего
+            Vector3[] vectors = new Vector3[4];
+            for (int i = 0; i < 4; i++)
+            {
+                neighboursCount[i] = 0;
+                vectors[i] = new Vector3(0f, 0f, 0f);
+            }
+            for (int i = 0; i < colliders.Length; i++)
+            {
+                if (colliders[i].gameObject == gameObject) continue;
+                if (colliders[i].gameObject.name == "food")
+                {
+                    neighboursCount[0]++;
+                    vectors[0] += colliders[i].gameObject.transform.position - transform.position;
+                }
+                else if (colliders[i].gameObject.name == "bacterium")
+                {
+                    AI ai = colliders[i].gameObject.GetComponent<AI>();
+                    neighboursCount[1] += ai.attackSkill / 3f;
+                    vectors[1] += (colliders[i].gameObject.transform.position - transform.position) * ai.attackSkill;
+                    neighboursCount[2] += ai.foodSkill / 3f;
+                    vectors[2] += (colliders[i].gameObject.transform.position - transform.position) * ai.foodSkill;
+                    neighboursCount[3] += ai.defSkill / 3f;
+                    vectors[3] += (colliders[i].gameObject.transform.position - transform.position) * ai.defSkill;
+                }
+            }
+            for (int i = 0; i < 4; i++)
+            {
+                if (neighboursCount[i] > 0)
+                {
+                    vectors[i] /= neighboursCount[i] * vision;
+                    inputs[i] = vectors[i].magnitude;
+                }
+                else
+                {
+                    inputs[i] = 0f;
+                }
+            }
+
+            float[] outputs = nn.FeedForward(inputs);
+            Vector2 target = new Vector2(0, 0);
+            for (int i = 0; i < 4; i++)
+            {
+                if (neighboursCount[i] > 0)
+                {
+                    Vector2 dir = new Vector2(vectors[i].x, vectors[i].y);
+                    dir.Normalize();
+                    target += dir * outputs[i];
+                }
+            }
+            if (target.magnitude > 1f) target.Normalize();
+            Vector2 velocity = rb.velocity;
+            velocity += target * (0.25f + attackSkill * 0.05f);
+            velocity *= 0.98f;
+            rb.velocity = velocity;
+            float antibiotics = 1f;
+            // концентрация антибиотиков
+            // if(transform.position.x < -39) antibiotics = 4;
+            // else if(transform.position.x < -20) antibiotics = 3;
+            // else if(transform.position.x < -1) antibiotics = 2;
+            // antibiotics = Mathf.Max(1f, antibiotics - defSkill);
+            energy -= Time.deltaTime * antibiotics * antibiotics;
+            if (energy < 0f)
+            {
+                Kill();
+            }
+        }
+
+        void OnTriggerEnter2D(Collider2D col)
+        {
+            if (foodSkill == 0) return;
+            if (col.gameObject.name == "food")
+            {
+                Eat(foodSkill);
+                Destroy(col.gameObject);
+            }
+        }
+
+        void OnCollisionEnter2D(Collision2D col)
+        {
+            if (age < 1f) return;
+            if (attackSkill == 0) return;
+            if (col.gameObject.name == "bacterium")
+            {
+                AI ai = col.gameObject.GetComponent<AI>();
+                if (ai.age < 1f) return;
+                float damage = Mathf.Max(0f, attackSkill - ai.defSkill);
+                damage *= 4f;
+                damage = Mathf.Min(damage, ai.energy);
+                ai.energy -= damage * 1.25f;
+                Eat(damage);
+                if (ai.energy == 0f) ai.Kill();
+            }
+        }
         private void Eat(float food)
         {
             energy += food;
