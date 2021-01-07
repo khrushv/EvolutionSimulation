@@ -4,14 +4,18 @@ namespace app
     public class NN
     {
         public Layer[] layers;
-
-        public static float NextDoubleRange(System.Random random, double minNumber, double maxNumber)
+        public Random random;
+        public  float NextDoubleRange(double minNumber, double maxNumber)
         {
-            return (float)((float)random.NextDouble() * (maxNumber - minNumber) + minNumber);
+            return (float)((float)this.random.NextDouble() * (maxNumber - minNumber) + minNumber);
+        }
+        public void initializeRandom(int seed=0)
+        {
+            random = new Random(seed);
         }
         public NN(params int[] sizes)
         {
-            Random rnd = new Random();
+            initializeRandom();
             layers = new Layer[sizes.Length];
             for (int i = 0; i < sizes.Length; i++)
             {
@@ -22,7 +26,7 @@ namespace app
                 {
                     for (int k = 0; k < nextSize; k++)
                     {
-                        layers[i].weights[j, k] = NN.NextDoubleRange(rnd, -1f, 1f);
+                        layers[i].weights[j, k] = this.NextDoubleRange(-1f, 1f);
                     }
                 }
             }

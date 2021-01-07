@@ -8,6 +8,7 @@ namespace app
 
         public float[] weights;
         public int[] skills;
+        public NN nn = new NN(new int[] { 1,1});
 
         public Genome(int size)
         {
@@ -16,7 +17,7 @@ namespace app
             skills = new int[skillCount];
             for (int i = 0; i < size; i++)
             {
-                weights[i] = NN.NextDoubleRange(rnd, -1f, 1f);
+                weights[i] = nn.NextDoubleRange(-1f, 1f);
             }
         }
 
@@ -33,11 +34,11 @@ namespace app
             Random rnd = new Random();
             for (int i = 0; i < weights.Length; i++)
             {
-                if (NN.NextDoubleRange(rnd, 0, 1f) < 0.1) weights[i] += NN.NextDoubleRange(rnd, -value, value);
+                if (nn.NextDoubleRange(0, 1f) < 0.1) weights[i] += nn.NextDoubleRange( -value, value);
             }
             for (int i = 0; i < skillCount; i++)
             {
-                if (NN.NextDoubleRange(rnd, 0, 1f) < 0.05)
+                if (nn.NextDoubleRange( 0, 1f) < 0.05)
                 {
                     skills[i] = rnd.Next(0, 4);
                 }
